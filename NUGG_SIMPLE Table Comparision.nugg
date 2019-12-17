@@ -1,0 +1,822 @@
+<?xml version="1.0" encoding="utf-8"?>
+<nugget name="TABLE COMPARISION PROGRAM">
+ <PROG NAME="YMD00_COMPARE_TABLE" VARCL="X" SUBC="1" RSTAT="K" RMAND="101" RLOAD="E" FIXPT="X" UCCHECK="X">
+  <textPool>
+   <language SPRAS="E">
+    <textElement ID="R" ENTRY="Table Comparision" LENGTH="24 "/>
+    <textElement ID="S" KEY="P_FIELD" ENTRY="        Key field" LENGTH="17 "/>
+    <textElement ID="S" KEY="P_RFC" ENTRY="        Target System" LENGTH="21 "/>
+    <textElement ID="S" KEY="P_TABLE" ENTRY="        Table" LENGTH="13 "/>
+    <textElement ID="S" KEY="S_STRING" ENTRY="        Value" LENGTH="14 "/>
+   </language>
+  </textPool>
+  <source>*&amp;---------------------------------------------------------------------*
+*&amp; Report ZTEST_PANKAJ
+*&amp;---------------------------------------------------------------------*
+*&amp;
+*&amp;---------------------------------------------------------------------*
+REPORT ymd00_compare_table.
+
+&quot;Declarations
+INCLUDE ymd00_compare_table_top.
+
+&quot;Business Logic
+INCLUDE ymd00_compare_table_001.
+
+&quot;Forms &amp; Subroutines
+INCLUDE ymd00_compare_table_get_003.</source>
+ </PROG>
+ <PROG NAME="YMD00_COMPARE_TABLE_TOP" VARCL="X" SUBC="I" RMAND="101" RLOAD="E" UCCHECK="X">
+  <textPool>
+   <language SPRAS="E">
+    <textElement ID="R" ENTRY="Include YMD00_COMPARE_TABLE_TOP" LENGTH="31 "/>
+   </language>
+  </textPool>
+  <source>*&amp;---------------------------------------------------------------------*
+*&amp;  Include           YMD00_COMPARE_TABLE_TOP
+*&amp;---------------------------------------------------------------------*
+
+* Header table for top of page
+TYPES: BEGIN OF slis_listheader,
+         typ(1)  TYPE c,   &quot; H = Header, S = Selection, A = Action
+         key(20) TYPE c,
+         info    TYPE slis_entry,
+       END OF slis_listheader.
+PARAMETERS : p_table TYPE tabname OBLIGATORY,
+             p_field TYPE fieldname,
+             p_rfc   TYPE rfcdest.
+
+DATA : lv_string         TYPE char255,
+       lt_option         TYPE TABLE OF rfc_db_opt,
+       ls_option         LIKE LINE OF lt_option,
+       lt_fields         TYPE TABLE OF rfc_db_fld,
+       lt_fields_loc     TYPE TABLE OF rfc_db_fld,
+       lt_fields_tmp     TYPE TABLE OF rfc_db_fld,
+       ls_fields         LIKE LINE OF lt_fields,
+       ls_fields_tmp     LIKE LINE OF lt_fields,
+       ls_dyn_fcat       TYPE lvc_s_fcat,
+       lt_dyn_fcat       TYPE lvc_t_fcat,
+       lt_data           TYPE TABLE OF tab512,
+       ls_data           LIKE LINE OF lt_data,
+       lt_data_loc       TYPE REF TO data,
+       lt_data_rem       TYPE REF TO data,
+       ls_data_rem       TYPE REF TO data,
+       lv_pos            TYPE i,
+       lv_where          TYPE string,
+       lv_whr_loc        TYPE string,
+       lv_len            TYPE i,
+       lt_result         TYPE REF TO data,
+       ls_result         TYPE REF TO data,
+       lt_fieldcat_alv   TYPE slis_t_fieldcat_alv,
+       ls_fieldcat_alv   TYPE slis_fieldcat_alv,
+       lt_key_flds       TYPE TABLE OF cacs_s_cond_keyfields,
+       ls_key_flds       LIKE LINE OF lt_key_flds,
+       lt_select_fields	 TYPE TABLE OF sel_table,
+       ls_select_fields	 LIKE LINE OF lt_select_fields,
+       lt_out_where_cond TYPE TABLE OF where_tab,
+       ls_out_where_cond LIKE LINE OF lt_out_where_cond,
+       lv_msg            TYPE string,
+       lv_tabname        TYPE tabname,
+       lv_rfcdest        TYPE rfcdest,
+       lv_output         TYPE string,
+       lt_listheader     TYPE TABLE OF slis_listheader,
+       ls_listheader     LIKE LINE OF lt_listheader.
+FIELD-SYMBOLS : &lt;lft_data_rem&gt;  TYPE STANDARD  TABLE,
+                &lt;lfs_data_rem&gt;  TYPE any,
+                &lt;lft_data_loc&gt;  TYPE STANDARD  TABLE,
+                &lt;lfs_data_loc&gt;  TYPE any,
+                &lt;lfs_field&gt;     TYPE any,
+                &lt;lfs_field_loc&gt; TYPE any,
+                &lt;lfs_field_rem&gt; TYPE any,
+                &lt;lft_result&gt;    TYPE STANDARD  TABLE,
+                &lt;lfs_result&gt;    TYPE any,
+                &lt;lfs_res_field&gt; TYPE any.
+
+SELECT-OPTIONS : s_string FOR lv_string.
+
+DATA:        ls_string         LIKE LINE OF s_string .
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_field.
+  IF p_table IS INITIAL.
+    MESSAGE &apos;Enter table name&apos; TYPE &apos;S&apos; DISPLAY LIKE &apos;E&apos;.
+    LEAVE TO LIST-PROCESSING.
+  ELSE.
+    PERFORM field_help.
+  ENDIF.</source>
+ </PROG>
+ <PROG NAME="YMD00_COMPARE_TABLE_001" VARCL="X" SUBC="I" RMAND="101" RLOAD="E" UCCHECK="X">
+  <textPool>
+   <language SPRAS="E">
+    <textElement ID="R" ENTRY="Include YMD00_COMPARE_TABLE_001" LENGTH="31 "/>
+   </language>
+  </textPool>
+  <source>*&amp;---------------------------------------------------------------------*
+*&amp;  Include           YMD00_COMPARE_TABLE_001
+*&amp;---------------------------------------------------------------------*
+
+START-OF-SELECTION.
+
+&quot;Validate selection screen data.
+PERFORM validate_input.
+
+&quot;Get records from Local System
+PERFORM get_local_records.
+
+&quot;Get records from Target System
+PERFORM get_target_records.
+
+&quot;Build Result structure
+PERFORM build_result_structure.
+
+&quot;Compare Tables and populate result.
+PERFORM compare_table_Data.
+
+&quot;Display Result
+PERFORM display_output.</source>
+ </PROG>
+ <PROG NAME="YMD00_COMPARE_TABLE_GET_003" VARCL="X" SUBC="I" RSTAT="K" RMAND="101" RLOAD="E" UCCHECK="X">
+  <textPool>
+   <language SPRAS="E">
+    <textElement ID="R" ENTRY="Include YMD00_COMPARE_TABLE_GET_003" LENGTH="35 "/>
+   </language>
+  </textPool>
+  <source>*----------------------------------------------------------------------*
+***INCLUDE YMD00_COMPARE_TABLE_GET_003.
+*----------------------------------------------------------------------*
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  GET_LOCAL_RECORDS
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+FORM get_local_records .
+  &quot;Build Table Structure
+  CREATE DATA lt_data_loc TYPE TABLE OF (p_table).
+  ASSIGN lt_data_loc-&gt;* TO &lt;lft_data_loc&gt;.
+
+  &quot;Select Options.
+  LOOP AT s_string INTO ls_string.
+    ls_select_fields-table = p_table.
+    ls_select_fields-field = p_field.
+    ls_select_fields-sign = ls_string-sign.
+    ls_select_fields-option = ls_string-option.
+    ls_select_fields-low = ls_string-low.
+    ls_select_fields-high = ls_string-high.
+    APPEND ls_select_fields TO lt_select_fields.
+    CLEAR ls_select_fields.
+  ENDLOOP.
+
+  &quot;Build where condition based on Select Options.
+  CALL FUNCTION &apos;CONVERT_SELECT_INTO_WHERE&apos;
+    EXPORTING
+      select_tablename = p_table
+    TABLES
+      in_select_fields = lt_select_fields
+      out_where_cond   = lt_out_where_cond.
+  CHECK lt_out_where_cond IS NOT INITIAL.
+  CLEAR lv_whr_loc.
+  LOOP AT lt_out_where_cond INTO ls_out_where_cond.
+    CONCATENATE lv_whr_loc ls_out_where_cond-zeile INTO lv_whr_loc.
+  ENDLOOP.
+
+  &quot;Get records from local system.
+  SELECT *
+    FROM (p_table)
+    INTO TABLE &lt;lft_data_loc&gt;
+    WHERE (lv_whr_loc).
+  IF sy-subrc NE 0.
+*    CLEAR lv_msg.
+*    CONCATENATE &apos;No record found in &apos; sy-sysid INTO lv_msg.
+*    MESSAGE lv_msg TYPE &apos;S&apos; DISPLAY LIKE &apos;E&apos;.
+*    LEAVE LIST-PROCESSING.
+  ENDIF.
+ENDFORM.
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  GET_TARGET_RECORDS
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+FORM get_target_records .
+  CLEAR lv_msg.
+  &quot;Get Definition of table from Target system
+  CALL FUNCTION &apos;RFC_READ_TABLE&apos; DESTINATION p_rfc
+    EXPORTING
+      query_table          = p_table
+      no_data              = &apos;X&apos;
+      rowskips             = 0
+      rowcount             = 0
+    TABLES
+      options              = lt_option
+      fields               = lt_fields
+      data                 = lt_data
+    EXCEPTIONS
+      table_not_available  = 1
+      table_without_data   = 2
+      option_not_valid     = 3
+      field_not_valid      = 4
+      not_authorized       = 5
+      data_buffer_exceeded = 6
+      OTHERS               = 7.
+  IF sy-subrc &lt;&gt; 0.
+    CASE sy-subrc.
+      WHEN 1.
+        lv_msg = &apos;Table not available in target system&apos;.
+      WHEN 5.
+        lv_msg = &apos;No authorization to read table in target system&apos;.
+      WHEN 6.
+        lv_msg = &apos;Data buffer exceed in target system&apos;.
+      WHEN 7.
+        lv_msg = &apos;Connection error with target system&apos;.
+    ENDCASE.
+    IF lv_msg IS NOT INITIAL.
+      MESSAGE lv_msg TYPE &apos;S&apos; DISPLAY LIKE &apos;E&apos;.
+      LEAVE LIST-PROCESSING.
+    ENDIF.
+  ENDIF.
+
+  LOOP AT lt_fields INTO ls_fields.
+    lv_pos = lv_pos + 1.
+    ls_dyn_fcat-fieldname = ls_fields-fieldname.
+    ls_dyn_fcat-outputlen = ls_fields-length.
+    ls_dyn_fcat-coltext   = ls_fields-fieldtext.
+    ls_dyn_fcat-col_pos   = lv_pos.
+    ls_dyn_fcat-key = &apos;X&apos;.
+    APPEND ls_dyn_fcat TO lt_dyn_fcat.
+  ENDLOOP.
+
+  &quot;Building Target Table Structure.
+  cl_alv_table_create=&gt;create_dynamic_table(
+    EXPORTING
+      i_style_table             = &apos;X&apos;    &quot; Add Style Table
+      it_fieldcatalog           =  lt_dyn_fcat   &quot; Field Catalog
+    IMPORTING
+      ep_table                  = lt_data_rem    &quot; Pointer to Dynamic Data Table
+    EXCEPTIONS
+      generate_subpool_dir_full = 1
+      OTHERS                    = 2
+  ).
+  IF sy-subrc &lt;&gt; 0.
+* MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+*            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+  REFRESH lt_option.
+
+  &quot;Where condition for target system.
+  APPEND LINES OF lt_out_where_cond TO lt_option.
+
+  &quot;Assigning Structure to Field Symbols.
+  ASSIGN lt_data_rem-&gt;* TO &lt;lft_data_rem&gt;.
+  CREATE DATA ls_data_rem LIKE LINE OF &lt;lft_data_rem&gt;.
+  ASSIGN ls_data_rem-&gt;* TO &lt;lfs_data_rem&gt;.
+
+  &quot;Get Data from target system and populating in corresponding fields.
+  &quot;RFC_READ_TABLE returns data in string format upto 512 records for each record.
+  LOOP AT lt_fields INTO ls_fields.
+    lv_len = lv_len + ls_fields-length.
+    IF lv_len GT 512.
+      REFRESH lt_data.
+
+      CALL FUNCTION &apos;RFC_READ_TABLE&apos; DESTINATION p_rfc
+        EXPORTING
+          query_table          = p_table
+          no_data              = &apos; &apos;
+          rowskips             = 0
+          rowcount             = 0
+        TABLES
+          options              = lt_option
+          fields               = lt_fields_tmp
+          data                 = lt_data
+        EXCEPTIONS
+          table_not_available  = 1
+          table_without_data   = 2
+          option_not_valid     = 3
+          field_not_valid      = 4
+          not_authorized       = 5
+          data_buffer_exceeded = 6
+          OTHERS               = 7.
+      IF sy-subrc EQ 0.
+        &quot;Populate data to corresponding fields in internal table
+        DESCRIBE TABLE lt_data.
+        IF &lt;lft_data_rem&gt; IS INITIAL.
+          DO sy-tfill TIMES.
+            APPEND &lt;lfs_data_rem&gt; TO &lt;lft_data_rem&gt;.
+          ENDDO.
+        ENDIF.
+        LOOP AT lt_fields_tmp INTO ls_fields_tmp.
+          LOOP AT &lt;lft_data_rem&gt; ASSIGNING &lt;lfs_data_rem&gt;.
+            READ TABLE lt_data INTO ls_data INDEX sy-tabix.
+            ASSIGN COMPONENT ls_fields_tmp-fieldname OF STRUCTURE &lt;lfs_data_rem&gt; TO &lt;lfs_field&gt;.
+            IF &lt;lfs_field&gt; IS ASSIGNED.
+              &lt;lfs_field&gt; = ls_data+ls_fields_tmp-offset(ls_fields_tmp-length).
+            ENDIF.
+          ENDLOOP.
+        ENDLOOP.
+      ENDIF.
+      lv_len = ls_fields-length.
+      REFRESH lt_fields_tmp.
+      APPEND ls_fields TO lt_fields_tmp.
+    ELSE.
+      APPEND ls_fields TO lt_fields_tmp.
+    ENDIF.
+  ENDLOOP.
+
+  &quot;Call RFC_READ_TABLE for remaining fields.
+  IF lt_fields_tmp IS NOT INITIAL.
+    REFRESH lt_data.
+    CALL FUNCTION &apos;RFC_READ_TABLE&apos; DESTINATION p_rfc
+      EXPORTING
+        query_table          = p_table
+        no_data              = &apos; &apos;
+        rowskips             = 0
+        rowcount             = 0
+      TABLES
+        options              = lt_option
+        fields               = lt_fields_tmp
+        data                 = lt_data
+      EXCEPTIONS
+        table_not_available  = 1
+        table_without_data   = 2
+        option_not_valid     = 3
+        field_not_valid      = 4
+        not_authorized       = 5
+        data_buffer_exceeded = 6
+        OTHERS               = 7.
+    IF sy-subrc EQ 0.
+      &quot;Populate data to corresponding fields in internal table.
+      DESCRIBE TABLE lt_data.
+      IF &lt;lft_data_rem&gt; IS INITIAL.
+        DO sy-tfill TIMES.
+          APPEND &lt;lfs_data_rem&gt; TO &lt;lft_data_rem&gt;.
+        ENDDO.
+      ENDIF.
+      LOOP AT lt_fields_tmp INTO ls_fields_tmp.
+        LOOP AT &lt;lft_data_rem&gt; ASSIGNING &lt;lfs_data_rem&gt;.
+          READ TABLE lt_data INTO ls_data INDEX sy-tabix.
+          ASSIGN COMPONENT ls_fields_tmp-fieldname OF STRUCTURE &lt;lfs_data_rem&gt; TO &lt;lfs_field&gt;.
+          IF &lt;lfs_field&gt; IS ASSIGNED.
+            &lt;lfs_field&gt; = ls_data+ls_fields_tmp-offset(ls_fields_tmp-length).
+          ENDIF.
+        ENDLOOP.
+      ENDLOOP.
+    ENDIF.
+    REFRESH lt_fields_tmp.
+  ENDIF.
+
+  IF &lt;lft_data_rem&gt; IS NOT ASSIGNED .
+    CLEAR lv_msg.
+    CONCATENATE &apos;No table found in &apos; p_rfc(3) INTO lv_msg.
+    MESSAGE lv_msg TYPE &apos;S&apos; DISPLAY LIKE &apos;E&apos;.
+    LEAVE LIST-PROCESSING.
+*  ELSEIF &lt;lft_data_rem&gt; IS ASSIGNED AND &lt;lft_data_rem&gt; IS INITIAL.
+*    CLEAR lv_msg.
+*    CONCATENATE &apos;No record found in &apos; p_rfc(3) INTO lv_msg.
+*    MESSAGE lv_msg TYPE &apos;S&apos; DISPLAY LIKE &apos;E&apos;.
+*    LEAVE LIST-PROCESSING.
+  ENDIF.
+ENDFORM.
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  BUILD_RESULT_STRUCTURE
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+FORM build_result_structure .
+
+  &quot;Get Local table Structure
+  CALL FUNCTION &apos;RFC_READ_TABLE&apos;
+    EXPORTING
+      query_table          = p_table
+      no_data              = &apos;X&apos;
+      rowskips             = 0
+      rowcount             = 0
+    TABLES
+      options              = lt_option
+      fields               = lt_fields_loc
+      data                 = lt_data
+    EXCEPTIONS
+      table_not_available  = 1
+      table_without_data   = 2
+      option_not_valid     = 3
+      field_not_valid      = 4
+      not_authorized       = 5
+      data_buffer_exceeded = 6
+      OTHERS               = 7.
+  IF sy-subrc &lt;&gt; 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  &quot;Create Result Structure.
+  CLEAR lv_pos.
+  REFRESH : lt_key_flds, lt_dyn_fcat.
+
+  &quot;Get Key fields of Table
+  CALL FUNCTION &apos;CACS_GET_TABLE_FIELDS&apos;
+    EXPORTING
+      i_tabname  = p_table
+    TABLES
+      t_keyfield = lt_key_flds.
+
+  &quot;System ID Field.
+  lv_pos = lv_pos + 1.
+  ls_dyn_fcat-fieldname = &apos;SYSTEM&apos;.
+  ls_dyn_fcat-outputlen = 3.
+  ls_dyn_fcat-coltext   = &apos;System ID&apos;.
+  ls_dyn_fcat-col_pos   = lv_pos.
+  ls_dyn_fcat-key = &apos;X&apos;.
+  APPEND ls_dyn_fcat TO lt_dyn_fcat.
+  CLEAR ls_dyn_fcat.
+
+  &quot;Append all key fields of table except MANDT &amp; CLIENT&gt;
+  LOOP AT lt_key_flds INTO ls_key_flds.
+    CHECK ls_key_flds-fieldname NE &apos;MANDT&apos; AND ls_key_flds-fieldname NE &apos;CLIENT&apos;.
+    READ TABLE lt_fields_loc INTO ls_fields WITH KEY fieldname = ls_key_flds-fieldname.
+    CHECK sy-subrc EQ 0.
+    lv_pos = lv_pos + 1.
+    ls_dyn_fcat-fieldname = ls_fields-fieldname.
+    ls_dyn_fcat-outputlen = ls_fields-length.
+    ls_dyn_fcat-coltext   = ls_fields-fieldtext.
+    ls_dyn_fcat-col_pos   = lv_pos.
+    ls_dyn_fcat-key = &apos;X&apos;.
+    APPEND ls_dyn_fcat TO lt_dyn_fcat.
+    CLEAR ls_dyn_fcat.
+  ENDLOOP.
+
+  &quot;Field name
+  lv_pos = lv_pos + 1.
+  ls_dyn_fcat-fieldname = &apos;FIELDNAME&apos;.
+  ls_dyn_fcat-outputlen = 30.
+  ls_dyn_fcat-coltext   = &apos;Field name&apos;.
+  ls_dyn_fcat-col_pos   = lv_pos.
+  APPEND ls_dyn_fcat TO lt_dyn_fcat.
+  CLEAR ls_dyn_fcat.
+
+  &quot;Field Value
+  lv_pos = lv_pos + 1.
+  ls_dyn_fcat-fieldname = &apos;VALUE&apos;.
+  ls_dyn_fcat-outputlen = 255.
+  ls_dyn_fcat-coltext   = &apos;Value&apos;.
+  ls_dyn_fcat-col_pos   = lv_pos.
+  APPEND ls_dyn_fcat TO lt_dyn_fcat.
+  CLEAR ls_dyn_fcat.
+
+  &quot;Create Structure from Catalog
+  cl_alv_table_create=&gt;create_dynamic_table(
+    EXPORTING
+      i_style_table             = &apos;X&apos;    &quot; Add Style Table
+      it_fieldcatalog           =  lt_dyn_fcat   &quot; Field Catalog
+    IMPORTING
+      ep_table                  = lt_result    &quot; Pointer to Dynamic Data Table
+    EXCEPTIONS
+      generate_subpool_dir_full = 1
+      OTHERS                    = 2
+  ).
+
+  ASSIGN lt_result-&gt;* TO &lt;lft_result&gt;.
+  CHECK &lt;lft_result&gt; IS ASSIGNED.
+  CREATE DATA ls_result LIKE LINE OF &lt;lft_result&gt;.
+
+ENDFORM.
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  COMPARE_TABLE_DATA
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+FORM compare_table_data .
+  LOOP AT &lt;lft_data_loc&gt; ASSIGNING &lt;lfs_data_loc&gt;.
+    &quot;Build where condition.
+    CLEAR lv_where.
+    UNASSIGN &lt;lfs_result&gt;.
+    ASSIGN ls_result-&gt;* TO &lt;lfs_result&gt;.
+    LOOP AT lt_key_flds INTO ls_key_flds.
+      CHECK ls_key_flds-fieldname NE &apos;MANDT&apos; AND ls_key_flds-fieldname NE &apos;CLIENT&apos;.
+      ASSIGN COMPONENT ls_key_flds-fieldname OF STRUCTURE &lt;lfs_data_loc&gt; TO &lt;lfs_field&gt;.
+      CHECK &lt;lfs_field&gt; IS ASSIGNED.
+      IF lv_where IS INITIAL.
+        CONCATENATE ls_key_flds-fieldname &apos;EQ&apos; &apos;&apos;&apos;&apos; INTO lv_where SEPARATED BY space.
+        CONCATENATE lv_where &lt;lfs_field&gt; &apos;&apos;&apos;&apos; INTO lv_where.
+      ELSE.
+        CONCATENATE lv_where &apos;AND&apos; ls_key_flds-fieldname &apos;EQ&apos; &apos;&apos;&apos;&apos; INTO lv_where SEPARATED BY space.
+        CONCATENATE lv_where &lt;lfs_field&gt; &apos;&apos;&apos;&apos; INTO lv_where.
+      ENDIF.
+      ASSIGN COMPONENT ls_key_flds-fieldname OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+      CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+      &lt;lfs_res_field&gt; = &lt;lfs_field&gt;.
+    ENDLOOP.
+    CHECK lv_where IS NOT INITIAL.
+    UNASSIGN &lt;lfs_data_rem&gt; .
+    LOOP AT &lt;lft_data_rem&gt; ASSIGNING &lt;lfs_data_rem&gt; WHERE (lv_where).
+      EXIT.
+    ENDLOOP.
+    CHECK &lt;lfs_data_rem&gt; IS ASSIGNED.
+    LOOP AT lt_fields_loc INTO ls_fields.
+      CHECK ls_fields-fieldname NE &apos;MANDT&apos; AND ls_fields-fieldname NE &apos;CLIENT&apos;.
+      ASSIGN COMPONENT ls_fields-fieldname OF STRUCTURE &lt;lfs_data_loc&gt; TO &lt;lfs_field_loc&gt;.
+      CHECK &lt;lfs_field_loc&gt; IS ASSIGNED.
+      ASSIGN COMPONENT ls_fields-fieldname OF STRUCTURE &lt;lfs_data_rem&gt; TO &lt;lfs_field_rem&gt;.
+      CHECK &lt;lfs_field_rem&gt; IS ASSIGNED.
+      IF &lt;lfs_field_loc&gt; NE &lt;lfs_field_rem&gt;.
+        &quot;Append local Record.
+        &quot;System ID
+        UNASSIGN &lt;lfs_res_field&gt;.
+        ASSIGN COMPONENT &apos;SYSTEM&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+        CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+        &lt;lfs_res_field&gt; = sy-sysid.
+
+        &quot;Fieldname
+        UNASSIGN &lt;lfs_res_field&gt;.
+        ASSIGN COMPONENT  &apos;FIELDNAME&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+        CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+        &lt;lfs_res_field&gt; = ls_fields-fieldname.
+
+        &quot;Value
+        UNASSIGN &lt;lfs_res_field&gt;.
+        ASSIGN COMPONENT  &apos;VALUE&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+        CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+        &lt;lfs_res_field&gt; = &lt;lfs_field_loc&gt;.
+        APPEND &lt;lfs_result&gt; TO &lt;lft_result&gt;.
+
+        &quot;Append Remote Record.
+        &quot;System ID
+        UNASSIGN &lt;lfs_res_field&gt;.
+        ASSIGN COMPONENT &apos;SYSTEM&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+        CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+        &lt;lfs_res_field&gt; = p_rfc(3).
+
+        &quot;Fieldname
+        UNASSIGN &lt;lfs_res_field&gt;.
+        ASSIGN COMPONENT  &apos;FIELDNAME&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+        CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+        &lt;lfs_res_field&gt; = ls_fields-fieldname.
+
+        &quot;Value
+        UNASSIGN &lt;lfs_res_field&gt;.
+        ASSIGN COMPONENT  &apos;VALUE&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+        CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+        &lt;lfs_res_field&gt; = &lt;lfs_field_rem&gt;.
+        APPEND &lt;lfs_result&gt; TO &lt;lft_result&gt;.
+      ENDIF.
+    ENDLOOP.
+    CLEAR : &lt;lfs_data_loc&gt;, &lt;lfs_data_rem&gt;.
+  ENDLOOP.
+  &quot;Delete used Local System Records.
+  SORT &lt;lft_data_loc&gt;.
+  DELETE ADJACENT DUPLICATES FROM &lt;lft_data_loc&gt;.
+  IF &lt;lft_data_loc&gt; IS NOT INITIAL.
+    READ TABLE &lt;lft_data_loc&gt; ASSIGNING &lt;lfs_data_loc&gt; INDEX 1.
+    IF &lt;lfs_data_loc&gt; IS ASSIGNED AND &lt;lfs_data_loc&gt; IS INITIAL.
+      DELETE &lt;lft_data_loc&gt; FROM 1 TO 1.
+    ENDIF.
+  ENDIF.
+
+  &quot;Delete used Target System Records.
+  SORT &lt;lft_data_rem&gt;.
+  DELETE ADJACENT DUPLICATES FROM &lt;lft_data_rem&gt;.
+  IF &lt;lft_data_rem&gt; IS NOT INITIAL.
+    READ TABLE &lt;lft_data_rem&gt; ASSIGNING &lt;lfs_data_rem&gt; INDEX 1.
+    IF &lt;lfs_data_rem&gt; IS ASSIGNED AND &lt;lfs_data_rem&gt; IS INITIAL.
+      DELETE &lt;lft_data_rem&gt; FROM 1 TO 1.
+    ENDIF.
+  ENDIF.
+
+  &quot;Source Unmatched records.
+  LOOP AT &lt;lft_data_loc&gt; ASSIGNING &lt;lfs_data_loc&gt;.
+    UNASSIGN &lt;lfs_result&gt;.
+    ASSIGN ls_result-&gt;* TO &lt;lfs_result&gt;.
+    &quot;System ID
+    UNASSIGN &lt;lfs_res_field&gt;.
+    ASSIGN COMPONENT &apos;SYSTEM&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+    CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+    &lt;lfs_res_field&gt; = sy-sysid.
+
+    LOOP AT lt_key_flds INTO ls_key_flds.
+      CHECK ls_key_flds-fieldname NE &apos;MANDT&apos; AND ls_key_flds-fieldname NE &apos;CLIENT&apos;.
+      ASSIGN COMPONENT ls_key_flds-fieldname OF STRUCTURE &lt;lfs_data_loc&gt; TO &lt;lfs_field&gt;.
+      CHECK &lt;lfs_field&gt; IS ASSIGNED.
+      ASSIGN COMPONENT ls_key_flds-fieldname OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+      CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+      &lt;lfs_res_field&gt; = &lt;lfs_field&gt;.
+    ENDLOOP.
+
+    &quot;Fieldname
+    UNASSIGN &lt;lfs_res_field&gt;.
+    ASSIGN COMPONENT &apos;FIELDNAME&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+    CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+    CLEAR &lt;lfs_res_field&gt;.
+
+    &quot;Value.
+    UNASSIGN &lt;lfs_res_field&gt;.
+    ASSIGN COMPONENT &apos;VALUE&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+    CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+    CONCATENATE &apos;No record found in&apos; p_rfc(3) INTO &lt;lfs_res_field&gt; SEPARATED BY space.
+    APPEND &lt;lfs_result&gt; TO &lt;lft_result&gt;.
+  ENDLOOP.
+
+  &quot;Target Unmatched records.
+  LOOP AT &lt;lft_data_rem&gt; ASSIGNING &lt;lfs_data_rem&gt;.
+    UNASSIGN &lt;lfs_result&gt;.
+    ASSIGN ls_result-&gt;* TO &lt;lfs_result&gt;.
+    &quot;System ID
+    UNASSIGN &lt;lfs_res_field&gt;.
+    ASSIGN COMPONENT &apos;SYSTEM&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+    CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+    &lt;lfs_res_field&gt; = p_rfc(3).
+
+    LOOP AT lt_key_flds INTO ls_key_flds.
+      CHECK ls_key_flds-fieldname NE &apos;MANDT&apos; AND ls_key_flds-fieldname NE &apos;CLIENT&apos;.
+      ASSIGN COMPONENT ls_key_flds-fieldname OF STRUCTURE &lt;lfs_data_rem&gt; TO &lt;lfs_field&gt;.
+      CHECK &lt;lfs_field&gt; IS ASSIGNED.
+      ASSIGN COMPONENT ls_key_flds-fieldname OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+      CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+      &lt;lfs_res_field&gt; = &lt;lfs_field&gt;.
+    ENDLOOP.
+
+    &quot;Fieldname
+    UNASSIGN &lt;lfs_res_field&gt;.
+    ASSIGN COMPONENT &apos;FIELDNAME&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+    CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+    CLEAR &lt;lfs_res_field&gt;.
+
+    &quot;Value.
+    UNASSIGN &lt;lfs_res_field&gt;.
+    ASSIGN COMPONENT &apos;VALUE&apos; OF STRUCTURE &lt;lfs_result&gt; TO &lt;lfs_res_field&gt;.
+    CHECK &lt;lfs_res_field&gt; IS ASSIGNED.
+    CONCATENATE &apos;No record found in&apos; sy-sysid INTO &lt;lfs_res_field&gt; SEPARATED BY space.
+    APPEND &lt;lfs_result&gt; TO &lt;lft_result&gt;.
+  ENDLOOP.
+ENDFORM.
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  DISPLAY_OUTPUT
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+FORM display_output .
+  CHECK &lt;lft_result&gt; IS NOT INITIAL.
+  LOOP AT lt_dyn_fcat INTO ls_dyn_fcat.
+    &quot;Table Name
+    ls_fieldcat_alv-fieldname  = ls_dyn_fcat-fieldname.
+    ls_fieldcat_alv-seltext_m  = ls_dyn_fcat-fieldname.
+    APPEND ls_fieldcat_alv TO lt_fieldcat_alv.
+    CLEAR ls_fieldcat_alv.
+  ENDLOOP.
+
+  PERFORM build_alv_header.
+
+  CALL FUNCTION &apos;REUSE_ALV_GRID_DISPLAY&apos;
+    EXPORTING
+      i_callback_program     = sy-repid
+      i_callback_top_of_page = &apos;TOP_OF_PAGE&apos;
+      it_fieldcat            = lt_fieldcat_alv
+    TABLES
+      t_outtab               = &lt;lft_result&gt;
+    EXCEPTIONS
+      program_error          = 1
+      OTHERS                 = 2.
+ENDFORM.
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  FIELD_HELP
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+FORM field_help .
+  TYPES : BEGIN OF lty_fieldname,
+            fieldname TYPE fieldname,
+          END OF lty_fieldname.
+  DATA : ls_f4_field TYPE lty_fieldname,
+         lt_f4_field TYPE TABLE OF lty_fieldname,
+         return_tab  TYPE TABLE OF ddshretval.
+  &quot;Get Key fields of Table
+  CALL FUNCTION &apos;CACS_GET_TABLE_FIELDS&apos;
+    EXPORTING
+      i_tabname  = p_table
+    TABLES
+      t_keyfield = lt_key_flds.
+  LOOP AT lt_key_flds INTO ls_key_flds.
+    CHECK ls_key_flds-fieldname NE &apos;MANDT&apos; AND ls_key_flds-fieldname NE &apos;CLIENT&apos;.
+    ls_f4_field-fieldname = ls_key_flds-fieldname.
+    APPEND ls_f4_field TO lt_f4_field.
+  ENDLOOP.
+  CALL FUNCTION &apos;F4IF_INT_TABLE_VALUE_REQUEST&apos;
+    EXPORTING
+      retfield        = &apos;P_FIELD&apos;
+      dynpprog        = sy-cprog
+      dynpnr          = sy-dynnr
+      dynprofield     = &apos;P_FIELD&apos;
+      value_org       = &apos;S&apos;
+      display         = &apos;F&apos;
+    TABLES
+      value_tab       = lt_f4_field
+      return_tab      = return_tab
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+  IF sy-subrc &lt;&gt; 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  VALIDATE_INPUT
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+FORM validate_input .
+  IF p_field IS INITIAL OR
+     p_rfc IS INITIAL OR
+     p_table IS INITIAL OR
+     s_string IS INITIAL.
+    MESSAGE &apos;All fields are mandatory&apos; TYPE &apos;S&apos; DISPLAY LIKE &apos;E&apos;.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+  SELECT SINGLE tabname
+    FROM dd02l
+    INTO lv_tabname
+    WHERE tabname EQ p_table
+      AND tabclass EQ &apos;TRANSP&apos;.
+  IF sy-subrc NE 0.
+    MESSAGE &apos;Invalid table name&apos; TYPE &apos;S&apos; DISPLAY LIKE &apos;E&apos;.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+  &quot;Get Key fields of Table
+  CALL FUNCTION &apos;CACS_GET_TABLE_FIELDS&apos;
+    EXPORTING
+      i_tabname  = p_table
+    TABLES
+      t_keyfield = lt_key_flds.
+  READ TABLE lt_key_flds TRANSPORTING NO FIELDS WITH KEY fieldname = p_field.
+  IF sy-subrc NE 0.
+    MESSAGE &apos;Invalid key field&apos; TYPE &apos;S&apos; DISPLAY LIKE &apos;E&apos;.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+  SELECT SINGLE rfcdest
+    FROM rfcdes
+    INTO lv_rfcdest
+    WHERE rfcdest EQ p_rfc
+      AND rfctype EQ &apos;3&apos;.
+  IF sy-subrc NE 0.
+    MESSAGE &apos;Invalid target system&apos; TYPE &apos;S&apos; DISPLAY LIKE &apos;E&apos;.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+ENDFORM.
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  BUILD_ALV_HEADER
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+FORM build_alv_header .
+  DESCRIBE TABLE &lt;lft_result&gt;.
+  lv_output = sy-tfill.
+  ls_listheader-typ = &apos;S&apos;.
+  ls_listheader-key = &apos;Mismatched entries:&apos;.
+  ls_listheader-info = sy-tfill.
+  APPEND ls_listheader TO lt_listheader.
+  CLEAR ls_listheader.
+  ls_listheader-typ = &apos;S&apos;.
+  ls_listheader-key = &apos;Table name:&apos;.
+  ls_listheader-info = p_table.
+  APPEND ls_listheader TO lt_listheader.
+  CLEAR ls_listheader.
+ENDFORM.
+
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  TOP_OF_PAGE
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+FORM top_of_page.
+  CALL FUNCTION &apos;REUSE_ALV_COMMENTARY_WRITE&apos;
+    EXPORTING
+      it_list_commentary = lt_listheader.
+
+ENDFORM.</source>
+ </PROG>
+</nugget>
